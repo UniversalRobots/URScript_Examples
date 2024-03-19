@@ -69,14 +69,47 @@ end
 ###
 def adm_smooth_dead_single_dim_scale(value, deadBand, smoothBand):
   local normVal = norm(value)
-  if normVal < deadBand:
+  if normVal <= deadBand:
     return 0
   elif normVal > (deadBand + smoothBand):
-    return ((normVal - deadBand - smoothBand) / normVal) + 0.5*smoothBand/(deadBand+smoothBand)
+    return ((normVal - deadBand - smoothBand*0.5) / normVal)
   end
   local s = normVal - deadBand
   return (0.5 * s * s / smoothBand) / normVal
 end
+
+#define test function for adm_smooth_dead_single_dim_scale
+def adm_test_smooth_dead_band():
+  def test_smooth_config(dead_band, smooth_band):
+    #zero in-out test
+    assert(adm_smooth_dead_single_dim_scale(0,dead_band, smooth_band) == 0)
+
+    #continuity test
+    def continuity(dead_band, smooth_band):
+      local x = 0
+      local dx = 0.1
+      local y = 0
+      while x < 200:
+        local dy = norm(adm_smooth_dead_single_dim_scale(x,dead_band, smooth_band)-y)
+        assert(dy < 5*dx)
+        x=x+dx
+        y=y+dy
+      end
+    end
+    continuity(dead_band, smooth_band)
+
+    #test convergating towards 1 
+    assert(norm(adm_smooth_dead_single_dim_scale(100000,dead_band, smooth_band)-1)<0.01)
+  end
+  test_smooth_config(1, 1)
+  test_smooth_config(0, 1)
+  test_smooth_config(1, 0)
+  test_smooth_config(20, 20)
+  test_smooth_config(20, 0)
+  test_smooth_config(0, 20)
+
+end
+adm_test_smooth_dead_band() #run test
 
 ###
 # Apply a smooth dead band to make to robot stand still when not driven external forces
