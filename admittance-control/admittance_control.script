@@ -243,5 +243,3 @@ end
 
 # Run the admittance control function
 admittance_control(compliance_vector = [0, 0, 1, 0, 0, 1])
-
-admittance_control(1,1,1,1,1,1,1)
