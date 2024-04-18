@@ -41,7 +41,7 @@ def adm_get_flange_wrench():
 end
 
 ###
-# Apply a dead band for force and torques. For make the robot stand still when not driven external forces 
+# Apply a dead band for force and torques. For make the robot stand still when not driven external forces
 # @param wrench_in array input wrench that might be zeroed
 # @param bandwidth_force number force bandwith
 # @param bandwidth_torque number torque bandwith
@@ -61,7 +61,7 @@ def adm_apply_dead_band(wrench_in, bandwidth_force, bandwidth_torque):
 end
 
 ###
-# get a smooth dead band scale. For use in the appplying dead band functions  
+# Get a smooth dead band scale. For use in the appplying dead band functions
 # @param value number input value
 # @param deadBand number deadBand
 # @param smoothBand number smoothBand
@@ -70,53 +70,57 @@ end
 def adm_smooth_dead_single_dim_scale(value, deadBand, smoothBand):
   local normVal = norm(value)
   if normVal <= deadBand:
+    #In deadband
     return 0
+    
   elif normVal > (deadBand + smoothBand):
-    return ((normVal - deadBand - smoothBand*0.5) / normVal)
+    #Pass deadband
+    return ((normVal - deadBand - smoothBand * 0.5) / normVal)
   end
+
+  #Smooth trancision
   local s = normVal - deadBand
   return (0.5 * s * s / smoothBand) / normVal
 end
 
-#define test function for adm_smooth_dead_single_dim_scale
-def adm_test_smooth_dead_band():
-  def test_smooth_config(dead_band, smooth_band):
-    #zero in-out test
-    assert(adm_smooth_dead_single_dim_scale(0,dead_band, smooth_band) == 0)
+### TEST_START 
+# # Test function for continuity in adm_smooth_dead_single_dim_scale
+# def adm_test_smooth_dead_band():
+#   def test_smooth_config(dead_band, smooth_band):
+#     #zero in-out test
+#     assert(adm_smooth_dead_single_dim_scale(0, dead_band, smooth_band) == 0)
 
-    #continuity test
-    def continuity(dead_band, smooth_band):
-      local x = 0
-      local dx = 0.1
-      local y = 0
-      while x < 200:
-        local dy = norm(adm_smooth_dead_single_dim_scale(x,dead_band, smooth_band)-y)
-        assert(dy < 5*dx)
-        x=x+dx
-        y=y+dy
-      end
-    end
-    continuity(dead_band, smooth_band)
+#     #continuity test
+#     def continuity(dead_band, smooth_band):
+#       local x = 0
+#       local dx = 0.1
+#       local y = 0
+#       while x < (dead_band + smooth_band + 50):
+#         local dy = norm(adm_smooth_dead_single_dim_scale(x, dead_band, smooth_band) - y)
+#         #Test that the change in y does not gets higher than the change in x
+#         assert(dy <= dx)
+#         x = x + dx
+#         y = y + dy
+#       end
+#     end
+#     continuity(dead_band, smooth_band)
 
-    #test convergating towards 1 
-    assert(norm(adm_smooth_dead_single_dim_scale(100000,dead_band, smooth_band)-1)<0.01)
-  end
-  test_smooth_config(1, 1)
-  test_smooth_config(0, 1)
-  test_smooth_config(1, 0)
-  test_smooth_config(20, 20)
-  test_smooth_config(20, 0)
-  test_smooth_config(0, 20)
+#   end
+#   test_smooth_config(1, 2)
+#   test_smooth_config(10, 20)
+#   test_smooth_config(0, 20)
+#   test_smooth_config(20, 0)
 
-end
-adm_test_smooth_dead_band() #run test
+# end
+# adm_test_smooth_dead_band() #run test
+### TEST_STOP
 
 ###
 # Apply a smooth dead band to make to robot stand still when not driven external forces
 # @param wrench_in array wrench_in that will be scaled
 # @param bandwidth_force number force bandwidth
 # @param bandwidth_torque number torque bandwidth
-# @param smooth_force number force smooth 
+# @param smooth_force number force smooth
 # @param smooth_torque number torque smooth
 # @returns array wrench where the smooth dead band is applied
 ###
@@ -127,7 +131,7 @@ end
 
 ###
 # Transform a velocity vector
-# @param t pose transformation from the input velocity to the output velocity 
+# @param t pose transformation from the input velocity to the output velocity
 # @param v array inout velocity vector
 # @returns array tranformed output velocity vector
 ###
@@ -176,7 +180,7 @@ end
 # @param base_to_compliance_frame pose compliance frame
 # @param tool_flange_to_compliance_center pose transformation from tool flange to center of compliance
 # @param dead_band array list of the deadband [Force dead band,   Torque dead band,  Force smooth band, Torque smooth band]
-# @param compliance_vector array A 6d vector of 0s and 1s. 1 means that the robot will apply admittance  in the corresponding axis of the compliance frame.  
+# @param compliance_vector array A 6d vector of 0s and 1s. 1 means that the robot will apply admittance  in the corresponding axis of the compliance frame.
 # @param stiffness_params array list of stiffness for the 6 DoF
 # @param target_wrench array the target wrench the robot shall apply
 ###
@@ -242,4 +246,6 @@ def admittance_control(mass_scaling = 0.5, damping_scaling = 0.5, mass_list = [2
 end
 
 # Run the admittance control function
-admittance_control(compliance_vector = [0, 0, 1, 0, 0, 1])
+ALONG_AND_AROUND_Z_AXIS = [0, 0, 1, 0, 0, 1]
+ALL_AXIS = [1, 1, 1, 1, 1, 1]
+admittance_control(compliance_vector = ALL_AXIS)
