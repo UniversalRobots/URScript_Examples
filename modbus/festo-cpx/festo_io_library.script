@@ -1,0 +1,165 @@
+# Author: mmi
+# Create and connect signals for getting, and setting
+# state of external I/O modules
+# This example assumes that 3 modules are connected:
+#   CPX-AP-I-4DI4DO-M8-3P
+#   CPX-AP-I-4AI-U-I-RTD-M12
+#   VAEM-L1-S-12-AP
+
+###
+# Configure modbus signals to connect to output coils on demo board
+# @param cpx_io_ip string IP address of Modbus coupler
+# @param timeout float Timeout for opening connection [s]
+# @returns bool True if connection confirmed
+###
+def festo_connect_coil_io(cpx_io_ip, timeout):
+  # add signals for all input and output coils
+  # 32 output coils (4 DO, 4 gap, 24 valves)
+  modbus_add_signal(cpx_io_ip, 255, 0, 1, "CPX_DO", True, 32)
+  modbus_add_signal(cpx_io_ip, 255, 0, 0, "CPX_DI", True, 4)
+  local i = 0
+  while i < timeout * 10:
+    modbus_error = modbus_get_error("CPX_DO")
+    if(modbus_error == 0):
+      # read initial state of outputs from CPX system
+      global coil_outputs = modbus_get_signal_status("CPX_DO", False)
+      textmsg("FESTO: connect t=", i)
+      return True
+    end
+    sleep(0.1)
+    i = i + 1
+  end
+  return False
+end
+
+###
+# Create and connect signals to read 4 analog inputs
+# This example assumes that module 
+# CPX-AP-I-4AI-U-I-RTD-M12 is connected
+# @param cpx_io_ip string IP address of Modbus coupler
+# @param timeout float Timeout for opening connection [s]
+# @returns bool True if connection confirmed
+###
+def festo_connect_analog_in(cpx_io_ip, timeout):
+  # add signals for 4 analog input channels from CPX-AP-I-4AI-U-I-RTD
+  # read holding registers 5000-5003
+  modbus_add_signal(cpx_io_ip, 255, 5000, 3, "CPX_RTDI", True, 4)
+  # set watchdog timeout to 30s - example of using watchdog on less critical signals
+  modbus_set_signal_watchdog("CPX_RTDI", 30)
+  local i = 0
+  while i < timeout * 10:
+    modbus_error = modbus_get_error("CPX_RTDI")
+    if(modbus_error == 0):
+      textmsg("FESTO: connect t=", i)
+      return True
+    end
+    sleep(0.1)
+    i = i + 1
+  end
+  return False
+end
+
+###
+# Read number of IO modules connected to modbus coupler
+# @param cpx_io_ip string IP address of Modbus coupler
+# @param timeout float Timeout for opening connection [s]
+# @returns int number of modules connected to CPX-AP-I-EP-M12, 0 on error
+###
+def festo_get_module_count(cpx_io_ip, timeout):
+  # add signal reading holding register with module count
+  modbus_add_signal(cpx_io_ip, 255, 12000, 3, "CPX_NMOD", True, 1)
+  # set as async - this register needs to be read only once
+  modbus_set_signal_update_frequency("CPX_NMOD", -1)
+  local i = 0
+  while i < timeout * 10:
+    modbus_error = modbus_get_error("CPX_NMOD")
+    if(modbus_error == 0):
+      textmsg("FESTO: connect t=", i)
+      return modbus_get_signal_status("CPX_NMOD")
+    end
+    sleep(0.1)
+    i = i + 1
+  end
+  return 0
+end
+
+###
+# Connect modbus coupler diagnostics registers
+# Master error information is stored in holding registers 11000-11005
+# @param cpx_io_ip string IP address of Modbus coupler
+# @param timeout float Timeout for opening connection [s]
+# @returns bool True if connection confirmed
+###
+def festo_connect_diagnostics(cpx_io_ip, timeout):
+  # add signal reading holding registers 11000-11005
+  modbus_add_signal(cpx_io_ip, 255, 11000, 3, "CPX_DIAG", True, 6)
+  # set at low frequency - read registers every 0.5s
+  modbus_set_signal_update_frequency("CPX_DIAG", 2)
+  local i = 0
+  while i < timeout * 10:
+    modbus_error = modbus_get_error("CPX_DIAG")
+    if(modbus_error == 0):
+      textmsg("FESTO: connect t=", i)
+      return True
+    end
+    sleep(0.1)
+    i = i + 1
+  end
+  return False
+end
+
+###
+# Delete all signals created by this library
+###
+def festo_delete_all():
+  modbus_delete_signal("CPX_DO")
+  modbus_delete_signal("CPX_DI")
+  modbus_delete_signal("CPX_RTDI")
+  modbus_delete_signal("CPX_NMOD")
+  modbus_delete_signal("CPX_DIAG")
+end
+
+###
+# Set digital output
+# @param number int Output number
+# @param state bool Output state
+###
+def festo_set_output_coil(number, state):
+  coil_outputs[number] = state
+  modbus_set_output_signal("CPX_DO", coil_outputs, False)
+end
+
+###
+# Read digital input
+# @param number int Input number
+# @returns bool Input state
+###
+def festo_get_input_coil(number):
+  global coil_inputs = modbus_get_signal_status("CPX_DI", False)
+  return coil_inputs[number]
+end
+
+###
+# Read value from analog input
+# @param number int zero based input index
+# @returns float Input state
+###
+def festo_get_analog_in(number):
+  global t = modbus_get_time_since_signal_invalid("CPX_RTDI")
+  if(t > 30):
+      # return -1 if there is an error
+      return -1
+  end
+  # read analog value if there is no error
+  local analog_in = modbus_get_signal_status("CPX_RTDI", False)
+  return analog_in[number]
+end
+
+###
+# Read master diagnostics error from modbus coupler
+# @returns int Error code
+###
+def festo_read_device_error():
+  global device_diag = modbus_get_signal_status("CPX_DIAG", False)
+  return device_diag[5] * 65536 + device_diag[4]
+end

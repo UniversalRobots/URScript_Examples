@@ -1,0 +1,15 @@
+# Author: mmi
+# add signal for reading all 24 digital inputs as a boolean array
+modbus_add_signal("192.168.1.100", 255, 0, 0, "D_IN", True, 24)
+sleep(1)
+  
+# read inputs state
+global inputs = modbus_get_signal_status("D_IN", False)
+  
+# extract individual input values
+global optical_sensor_1 = inputs[0]
+global optical_sensor_2 = inputs[3]
+global magnetic_sensor_in = inputs[4]
+global magnetic_sensor_out = inputs[23]
+  
+modbus_delete_signal("D_IN")
