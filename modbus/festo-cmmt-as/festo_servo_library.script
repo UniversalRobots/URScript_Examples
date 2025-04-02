@@ -1,0 +1,293 @@
+# Author: mmi
+# based on https://gitlab.com/festo-research/electric-automation/festo-edcon
+# example using single signal for both read and write
+
+# initial value for telegram 111 sent to servo
+global cmd_buffer = [1086, 0, 0, 0, 16384, 0, 0, 0, 0, 16384, 16384]
+global stat_buffer = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+global err = 0
+
+###
+# Connect modbus client to servo drive
+# @param servo_name string Unique servo name
+# @param servo_ip string IP address
+# @param timeout float Timeout for opening connection [s]
+# @returns bool True if connection confirmed
+###
+def festo_connect_servo(servo_name, servo_ip, timeout):
+  # add signals for control, and status - 11 registers each
+  modbus_add_rw_signal(servo_ip, 255, 100, 11, 0, 11, servo_name, True)
+  modbus_set_signal_update_frequency(servo_name, 20)
+  sleep(1)
+  local i = 0
+  while i < timeout * 10:
+    err = modbus_get_error(servo_name)
+    if(modbus_get_error(servo_name) == 0):
+      textmsg("FESTO: connect t=", i)
+      return True
+    end
+    sleep(0.1)
+    i = i + 1
+  end
+  return True
+end
+
+###
+# Read status and check if servo is in error state
+# @param servo_name string Unique name
+# @returns bool True if error bit is set
+###
+def festo_has_error(servo_name):
+  stat_buffer = modbus_get_signal_status(servo_name, False)
+  local zsw1 = integer_to_binary_list(stat_buffer[0])
+  return zsw1[3]
+end
+
+###
+# Acknowledge pending error on servo drive
+# @param servo_name string Unique name
+# @param timeout float Timeout [s]
+# @returns bool True if error was acknowledged and cleared
+###
+def festo_acknowledge_fault(servo_name, timeout):
+  # set malfunction acknowledge 1 and back to 0, then wait for fault to reset
+  stw1 = integer_to_binary_list(cmd_buffer[0])
+  stw1[7] = True
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  err = modbus_get_error(servo_name)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  sleep(0.5)
+  stw1[7] = False
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  local i = 0
+  while i < timeout * 10:
+    if(festo_has_error(servo_name) == False):
+      return True
+    end
+    sleep(0.1)
+    i = i + 1
+  end
+  textmsg("FESTO: acknowledge fault FAILED")
+  return False
+end
+
+###
+# Enable servo driver power stage
+# @param servo_name string Unique name
+# @returns bool True power stage successfuly enabled
+###
+def festo_enable_powerstage(servo_name):
+  # check if robot has plc control
+  stat_buffer = modbus_get_signal_status(servo_name, False)
+  local zsw1 = integer_to_binary_list(stat_buffer[0])
+  if(zsw1[9] == False):
+    return False
+  end
+
+  # activate operation enabled
+  local stw1 = integer_to_binary_list(cmd_buffer[0])
+  if(zsw1[2]):
+    stw1[0] = False
+    cmd_buffer[0] = binary_list_to_integer(stw1)
+    modbus_set_output_register(servo_name, cmd_buffer, False)
+    sleep(0.1)
+  end
+  stw1[0] = True
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+
+  # check if operation_enabled is active
+  sleep(2)
+  stat_buffer = modbus_get_signal_status(servo_name, False)
+  zsw1 = integer_to_binary_list(stat_buffer[0])
+  if zsw1[2]:
+    return True
+  end
+  textmsg("FESTO: operation enabled FAILED")
+  return False
+end
+
+###
+# Read current servo position
+# @param servo_name string Unique name
+# @returns int Current position in configured drive unit
+###
+def festo_get_position(servo_name):
+  stat_buffer = modbus_get_signal_status(servo_name, False)
+  return stat_buffer[6] * 65536 + stat_buffer[5]
+end
+
+###
+# Send move to absolute position command
+# @param servo_name string Unique name
+# @param position int Target position in drive units
+# @param velocity int Maximum velocity in drive units
+###
+def festo_start_move(servo_name, position, velocity):
+  cmd_buffer[6] = floor(position / 65536)
+  cmd_buffer[5] = position - cmd_buffer[6] * 65536
+  cmd_buffer[8] = floor(velocity / 65536)
+  cmd_buffer[7] = velocity - cmd_buffer[8] * 65536
+
+  # activate MDI, and absolute positioning
+  local pos_stw1 = integer_to_binary_list(cmd_buffer[1])
+  pos_stw1[15] = True
+  pos_stw1[8] = True
+  cmd_buffer[1] = binary_list_to_integer(pos_stw1)
+  
+  # start traversing task
+  local stw1 = integer_to_binary_list(cmd_buffer[0])
+  stw1[6] = True
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  sleep(0.2)
+end
+
+###
+# Wait until bit in status word is set
+# @param servo_name string Unique name
+# @param bit int Bit index
+# @param timeout float Timeout [s]
+# @returns bool True if bit was set, False on timeout or drive fault
+###
+def festo_wait_for_status_bit(servo_name, bit, timeout):
+  local i = 0
+  while i < timeout * 10:
+    stat_buffer = modbus_get_signal_status(servo_name, False)
+    local zsw1 = integer_to_binary_list(stat_buffer[0])
+    # check for fault
+    if(zsw1[3] == True):
+      textmsg("FESTO: status FAULT, wait bit=", bit)
+      return False
+    end
+    # check if requested bit is set
+    if(zsw1[bit] == True):
+      # textmsg("FESTO: wait for status t=", i)
+      return True
+    end
+    i = i + 1
+    sleep(0.1)
+  end
+  textmsg("FESTO: status timeout, bit=", bit)
+  return False
+end
+
+###
+# Stop drive motion, and reset all motion tasks.
+# @param servo_name string Unique name
+# @param timeout float Timeout [s]
+# @returns bool True if motion was stopped, False on timeout or drive fault
+###
+def festo_stop_motion_task(servo_name, timeout):
+  cmd_buffer[6] = 0
+  cmd_buffer[5] = 0
+  cmd_buffer[8] = 0
+  cmd_buffer[7] = 0
+
+  local stw1 = integer_to_binary_list(cmd_buffer[0])
+  local pos_stw2 = integer_to_binary_list(cmd_buffer[2])
+
+  # reset traversing task
+  stw1[6] = False
+  # reset jog tasks
+  stw1[8] = False
+  stw1[9] = False
+  # reset referencing tasks
+  stw1[11] = False
+  pos_stw2[1] = False
+  # stop command
+  stw1[4] = False
+
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  cmd_buffer[2] = binary_list_to_integer(pos_stw2)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  sleep(0.1)
+
+  # disable rejecting positiioning tasks
+  stw1[4] = True
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  sleep(0.1)
+
+  # check if drive stopped
+  return festo_wait_for_status_bit(servo_name, 13, timeout)
+end
+
+###
+# Move to absolute target position
+# @param servo_name string Unique name
+# @param position int Target position in drive units
+# @param velocity int Maximum velocity in drive units
+# @param timeout float Timeout [s]
+# @returns bool True if target position was reached, False on timeout or drive fault
+###
+def festo_move(servo_name, position, velocity, timeout):
+  festo_start_move(servo_name, position, velocity)
+  # wait a little more until motion starts
+  sleep(0.5)
+  # check if position reached
+  if(festo_wait_for_status_bit(servo_name, 10, timeout)):
+    return festo_stop_motion_task(servo_name, timeout)
+  end
+  return False
+end
+
+###
+# Read drive referenced status
+# @param servo_name string Unique name
+# @returns bool True drive is referenced
+###
+def festo_is_referenced(servo_name):
+  stat_buffer = modbus_get_signal_status(servo_name, False)
+  local zsw1 = integer_to_binary_list(stat_buffer[0])
+  return zsw1[11]
+end  
+
+###
+# Execute drive referencing (homing)
+# @param servo_name string Unique name
+# @param homing_method bool True - use homing method configured in servo drive, False - use current position as home
+# @param timeout float Timeout [s]
+# @returns bool True referencing succeeded, False on timeout or drive fault
+###
+def festo_reference(servo_name, homing_method, timeout):
+  textmsg("FESTO: referencing, method=", homing_method)
+
+  local stw1 = integer_to_binary_list(cmd_buffer[0])
+  local pos_stw2 = integer_to_binary_list(cmd_buffer[2])
+  if homing_method:
+    # use configured homing method
+    stw1[11] = True
+  else:
+    # set home to current position
+    pos_stw2[1] = True
+  end
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  cmd_buffer[2] = binary_list_to_integer(pos_stw2)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  sleep(0.2)
+
+  # wait for homing task to complete
+  if festo_wait_for_status_bit(servo_name, 11, timeout):
+    stw1[11] = False
+    pos_stw2[1] = False
+    cmd_buffer[0] = binary_list_to_integer(stw1)
+    cmd_buffer[2] = binary_list_to_integer(pos_stw2)
+    modbus_set_output_register(servo_name, cmd_buffer, False)
+    sleep(0.2)
+
+    return festo_stop_motion_task(servo_name, timeout)
+  end
+
+  stw1[11] = False
+  pos_stw2[1] = False
+  cmd_buffer[0] = binary_list_to_integer(stw1)
+  cmd_buffer[2] = binary_list_to_integer(pos_stw2)
+  modbus_set_output_register(servo_name, cmd_buffer, False)
+  sleep(0.2)
+
+  textmsg("FESTO: referencing FAILED")
+  return False
+end  
