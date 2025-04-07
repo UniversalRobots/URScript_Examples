@@ -1,0 +1,475 @@
+
+###
+# Function creates new configuration in EIP Adapter
+# Configuration needs to be added before connection from CNC machine is activated.
+# 
+# Stops program if configuration adding fails
+# @param robot_to_cnc int instance id for T->O
+# @param cnc_to_robot int instance id for O->T
+# @param size int size of each of the instances
+###
+def dmgmori_register_connection(robot_to_cnc = 111, cnc_to_robot = 101, size = 8):
+  local eip_configurator = rpc_factory("xmlrpc", "http://127.0.0.1:40000/RPC2")
+  if(not eip_configurator.add_configuration(robot_to_cnc, size, cnc_to_robot, size)):
+    popup("Adding CNC instances failed")
+    halt
+  end
+  eip_configurator.closeXMLRPCClientConnection()
+  sleep(1.0)
+end
+
+# Variable is set to True after custom Ethernet/IP instances are configurad
+# It can be used in threads started before configuraiton function is called
+global dmgmori_eip_configured = False
+
+###
+# Create mapping between Ethernet/IP registers and named variables
+# note: function has to be called after configuration and before any other function
+# 
+# @param robot_to_cnc string instance id for T->O
+# @param cnc_to_robot string instance id for O->T
+# @param size int size of each of the instances
+###
+def dmgmori_init_eip_communication(robot_to_cnc = "111", cnc_to_robot = "101", size = 8):
+  global hwr = eip_writer_factory(robot_to_cnc, size)
+  global hrd = eip_reader_factory(cnc_to_robot, size)
+
+  local dmg_write_offset = 9930
+  local dmg_read_offset = 9900
+
+  ##########################
+  # in DMG T2O, robot to CNC
+  ##########################
+  hwr.define_bit(9930 - dmg_write_offset, 0, "RobotRequestComplete")
+  hwr.define_bit(9930 - dmg_write_offset, 1, "AutoStart")
+  hwr.define_bit(9930 - dmg_write_offset, 2, "ArmInsideMachine") 
+  hwr.define_bit(9930 - dmg_write_offset, 3, "Chuck1Unclamp")
+  hwr.define_bit(9930 - dmg_write_offset, 4, "Chuck1Clamp")
+  hwr.define_bit(9930 - dmg_write_offset, 5, "Chuck1AirBlow")
+  hwr.define_bit(9930 - dmg_write_offset, 6, "PermitAutoShutdown")
+  hwr.define_bit(9930 - dmg_write_offset, 7, "Chuck2Unclamp")
+
+  hwr.define_bit(9931 - dmg_write_offset, 0, "Chuck2Clamp")
+  hwr.define_bit(9931 - dmg_write_offset, 1, "Chuck2AirBlow")
+  hwr.define_bit(9931 - dmg_write_offset, 2, "AutoDoorOpen") 
+  hwr.define_bit(9931 - dmg_write_offset, 3, "AutoDoorClose")
+  hwr.define_bit(9931 - dmg_write_offset, 4, "RobotAlarm")
+  hwr.define_bit(9931 - dmg_write_offset, 5, "NoBlankWorkpiece")
+  hwr.define_bit(9931 - dmg_write_offset, 6, "CompletedWorkpiecesFull")
+  hwr.define_bit(9931 - dmg_write_offset, 7, "PermitDoorUnlocking")
+  
+  hwr.define_bit(9932 - dmg_write_offset, 0, "SteadyRestOpen")
+  hwr.define_bit(9932 - dmg_write_offset, 1, "SteadyRestClose")
+  hwr.define_bit(9932 - dmg_write_offset, 2, "SteadyRestAirBlow") 
+  hwr.define_bit(9932 - dmg_write_offset, 3, "SteadyRest2Open")
+  hwr.define_bit(9932 - dmg_write_offset, 4, "SteadyRest2Close")
+  hwr.define_bit(9932 - dmg_write_offset, 5, "SteadyRest2AirBlow")
+
+  hwr.define_bit(9932 - dmg_write_offset, 6, "Prog1")
+  hwr.define_bit(9932 - dmg_write_offset, 7, "Prog2")
+  hwr.define_bit(9933 - dmg_write_offset, 0, "Prog3")
+  hwr.define_bit(9933 - dmg_write_offset, 1, "Prog4")
+  hwr.define_bit(9933 - dmg_write_offset, 2, "Prog5")
+  hwr.define_bit(9933 - dmg_write_offset, 3, "Prog6")
+  hwr.define_bit(9933 - dmg_write_offset, 4, "Prog7")
+  hwr.define_bit(9933 - dmg_write_offset, 5, "Prog8")
+  hwr.define_bit(9933 - dmg_write_offset, 6, "Prog9")
+  hwr.define_bit(9933 - dmg_write_offset, 7, "Prog10")
+  hwr.define_bit(9934 - dmg_write_offset, 0, "Prog11")
+  hwr.define_bit(9934 - dmg_write_offset, 1, "Prog12")
+  hwr.define_bit(9934 - dmg_write_offset, 2, "Prog13")
+  hwr.define_bit(9934 - dmg_write_offset, 3, "Prog14")
+
+  hwr.define_bit(9934 - dmg_write_offset, 4, "RobotRequestComplete2")
+  hwr.define_bit(9934 - dmg_write_offset, 5, "AutoStartCommand2")
+  hwr.define_bit(9934 - dmg_write_offset, 6, "ArmInMachine2")
+  hwr.define_bit(9934 - dmg_write_offset, 7, "Door2Open")
+
+  hwr.define_bit(9935 - dmg_write_offset, 0, "Door2Close")
+  hwr.define_bit(9935 - dmg_write_offset, 1, "Spindle1Orientation1")
+  hwr.define_bit(9935 - dmg_write_offset, 2, "Spindle1Orientation2") 
+  hwr.define_bit(9935 - dmg_write_offset, 3, "Spindle1Jog")
+  hwr.define_bit(9935 - dmg_write_offset, 4, "Spindle2Orientation1")
+  hwr.define_bit(9935 - dmg_write_offset, 5, "Spindle2Orientation2")
+  hwr.define_bit(9935 - dmg_write_offset, 6, "Spindle2Jog")
+  hwr.define_bit(9935 - dmg_write_offset, 7, "BinaryData2")
+
+  hwr.define_bit(9937 - dmg_write_offset, 5, "SteadyRest3Open")
+  hwr.define_bit(9937 - dmg_write_offset, 6, "SteadyRest3Close")
+  hwr.define_bit(9937 - dmg_write_offset, 7, "LockFrontCover")
+
+  ##########################
+  # in DMG O2T, CNC to robot
+  ##########################
+  hrd.define_bit(9900 - dmg_read_offset, 0, "SpindleRotating")
+  hrd.define_bit(9900 - dmg_read_offset, 1, "RobotEnabled")
+  hrd.define_bit(9900 - dmg_read_offset, 2, "MachineAtZeroPoint")
+  hrd.define_bit(9900 - dmg_read_offset, 3, "Chuck1UnclampCompleted")
+  hrd.define_bit(9900 - dmg_read_offset, 4, "Chuck1ClampCompleted")
+  hrd.define_bit(9900 - dmg_read_offset, 5, "WorkpieceHoldingDetection1")
+  hrd.define_bit(9900 - dmg_read_offset, 6, "AutoPowerShutdownEnabled")
+  hrd.define_bit(9900 - dmg_read_offset, 7, "Chuck2UnclampCompleted")
+
+  hrd.define_bit(9901 - dmg_read_offset, 0, "Chuck2ClampCompleted")
+  hrd.define_bit(9901 - dmg_read_offset, 1, "WorkpieceHoldingDetection2")
+  hrd.define_bit(9901 - dmg_read_offset, 2, "AutoDoorOpenCompleted")
+  hrd.define_bit(9901 - dmg_read_offset, 3, "AutoDoorCloseCompleted")
+  hrd.define_bit(9901 - dmg_read_offset, 4, "MachineAlarm")
+  hrd.define_bit(9901 - dmg_read_offset, 5, "RobotRequest1")
+  hrd.define_bit(9901 - dmg_read_offset, 6, "RobotRequest2")
+  hrd.define_bit(9901 - dmg_read_offset, 7, "FrontCoverCloseCompleted")
+
+  hrd.define_bit(9902 - dmg_read_offset, 0, "SteadyRestOpenComplete")
+  hrd.define_bit(9902 - dmg_read_offset, 1, "SteadyRestCloseComplete")
+  hrd.define_bit(9902 - dmg_read_offset, 2, "ProgramEnd")
+  hrd.define_bit(9902 - dmg_read_offset, 3, "SteadyRest2OpenComplete")
+  hrd.define_bit(9902 - dmg_read_offset, 4, "SteadyRest2CloseComplete")
+  hrd.define_bit(9902 - dmg_read_offset, 5, "AutoOperationInProgress")
+  hrd.define_bit(9902 - dmg_read_offset, 6, "WorkCounterCountUp")
+  hrd.define_bit(9902 - dmg_read_offset, 7, "RobotRequestForecast")
+
+  hrd.define_bit(9903 - dmg_read_offset, 0, "Spindle1Orientation1Complete")
+  hrd.define_bit(9903 - dmg_read_offset, 1, "Spindle1Orientation2Complete")
+  hrd.define_bit(9903 - dmg_read_offset, 2, "Spindle2Orientation1Complete")
+  hrd.define_bit(9903 - dmg_read_offset, 3, "Spindle2Orientation2Complete")
+  hrd.define_bit(9903 - dmg_read_offset, 4, "Spindle2Rotating")
+  hrd.define_bit(9903 - dmg_read_offset, 5, "MachineAtZeroPoint2")
+  hrd.define_bit(9903 - dmg_read_offset, 6, "AutoDoor2OpenCompleted")
+  hrd.define_bit(9903 - dmg_read_offset, 7, "AutoDoor2CloseComplete")
+
+  hrd.define_bit(9904 - dmg_read_offset, 0, "MachineAlarm2")
+  hrd.define_bit(9904 - dmg_read_offset, 1, "Robot2Request1")
+  hrd.define_bit(9904 - dmg_read_offset, 2, "Robot2Request2")
+  hrd.define_bit(9904 - dmg_read_offset, 3, "Program2End")
+  hrd.define_bit(9904 - dmg_read_offset, 4, "AutoOperation2InProgress")
+  hrd.define_bit(9904 - dmg_read_offset, 5, "WorkCounterCountUp2")
+  hrd.define_bit(9904 - dmg_read_offset, 6, "Robot2RequestForecast")
+  hrd.define_bit(9904 - dmg_read_offset, 7, "SteadyRest3Open")
+
+  hrd.define_bit(9905 - dmg_read_offset, 0, "SteadyRest3Close")
+
+  hrd.define_bit(9905 - dmg_read_offset, 3, "LockFrontCover2")
+  hrd.define_bit(9905 - dmg_read_offset, 4, "OpPanelHomePos")
+
+  # Bit fields can be read for debugging purposes to an array
+  hrd.define_uint8_array(9900 - dmg_read_offset, 6, "cnc_to_robot")
+
+  # Watchdog will pause program after 1s of no communication from CNC machine
+  hrd.set_watchdog(1, 1)
+
+  # Set all output bits to 0
+  hwr.clear()
+
+  # note: ArmInsideMachine is inverted
+  hwr.write(struct(ArmInsideMachine = True, PermitDoorUnlocking = True))
+
+  global dmgmori_eip_configured = True
+end
+
+###
+# Add custom field of type REAL.
+# Additional field should be configured on CNC. 
+#
+# @param name string name
+# @param offset int offset Starting offset in CNC 
+###
+def dmgmori_add_custom_real(name, offset):
+  hrd.define_float32(offset, name)
+end
+
+###
+# Add custom field of type WORD.
+# Additional field should be configured on CNC. 
+#
+# @param name string name
+# @param offset int offset Starting offset in CNC 
+###
+def dmgmori_add_custom_word(name, offset):
+  hrd.define_uint16(offset, name)
+end
+
+###
+# Example for reading custom offset from user parameter on CNC machine
+# Custom offset can be written to user register by ansi program
+# Custom variable name is defined with dmgmori_add_custom_real function
+# @returns number custom variable value. Type depends on the defined value type.
+###
+def dmgmori_get_custom_variable(name):
+  return hrd.read(name)
+end
+
+###
+# Set program number on CNC input bits. Program number is encoded on 14 bits
+# @param programNumber int programNumber
+###
+def __load_program(programNumber):
+  local programBits = integer_to_binary_list(programNumber)
+  hwr.write(struct(Prog1 = programBits[0], Prog2 = programBits[1], Prog3 = programBits[2], Prog4 = programBits[3], Prog5 = programBits[4], Prog6 = programBits[5], Prog7 = programBits[6], Prog8 = programBits[7], Prog9 = programBits[8], Prog10 = programBits[9], Prog11 = programBits[10], Prog12 = programBits[11], Prog13 = programBits[12], Prog14 = programBits[13]))
+end
+
+###
+# Stop program if error condition is present
+# @param check_spindle_rotating bool Fail if spindle rotation detected
+###
+def __dmgmori_fail_check(check_spindle_rotating = True):
+  local preconditions = hrd.read(["RobotEnabled", "MachineAlarm", "SpindleRotating"])
+  local info_text = ""
+  if(not preconditions.RobotEnabled):
+    str_cat(info_text, "Robot interface disabled<br>")
+  elif(preconditions.MachineAlarm):
+    str_cat(info_text, "Alarm on CNC active<br>")
+  elif(preconditions.SpindleRotating and check_spindle_rotating):
+    str_cat(info_text, "Spindle is still rotating<br>")
+  end
+  if(str_len(info_text) > 0):
+    popup("Preconditions failed, stopping program<br>" + info_text)
+    dmgmori_print_inputs()
+    halt
+  end
+end
+
+###
+# Wait until error coditions are cleared. Inform operator when any error is present.
+# Operator is expected to clear errors, and press "continue"
+###
+def __dmgmori_wait_error_clear():
+  # Keep checking preconditions
+  while(True):
+    local preconditions = hrd.read(["RobotEnabled", "MachineAlarm", "SpindleRotating", "OpPanelHomePos"])
+    local info_text = ""
+    if(not preconditions.RobotEnabled):
+      str_cat(info_text, "Enable robot interface<br>")
+    elif(preconditions.MachineAlarm):
+      str_cat(info_text, "Clear Alarm on CNC<br>")
+    elif(preconditions.SpindleRotating):
+      str_cat(info_text, "Spindle is still rotating<br>")
+    elif(not preconditions.OpPanelHomePos):
+      str_cat(info_text, "Move operator panel to home position<br>")
+    end
+    if(str_len(info_text) == 0):
+      break
+    else:
+      popup(info_text, blocking = True)
+    end
+    sleep(1)
+  end
+end
+
+###
+# Load program, and start it.
+# @param programNumber int Program number.
+###
+def dmgmori_cycle_start(programNumber):
+  __dmgmori_fail_check()
+  __load_program(programNumber)
+  hwr.write(struct(AutoStart = True))
+  sleep(1)
+  hwr.write(struct(AutoStart = False))
+
+  # wait until ProgramEnd is deasserted after program start request
+  # this indicates successful program start
+  while (hrd.read("ProgramEnd")):
+    __dmgmori_fail_check()
+    sleep(0.5)
+  end
+end
+
+###
+# Wait until CNC program is finished executing
+###
+def dmgmori_wait_for_program_end():
+  while (not hrd.read("ProgramEnd")):
+    __dmgmori_fail_check()
+    sleep(0.5)
+  end
+end
+
+###
+# Block until CNC machine is ready
+###
+def dmgmori_begin():
+  __dmgmori_wait_error_clear()
+end
+
+###
+# Notify CNC that robot is no longer inside
+###
+def dmgmori_end():
+  # note: ArmInsideMachine is inverted
+  hwr.write(struct(ArmInsideMachine = True))
+  sleep(0.5)
+end
+
+###
+# Opens door and waits until door is fully open
+###
+def dmgmori_robot_door_open():
+  __dmgmori_wait_error_clear()
+
+  while (hrd.read("AutoOperationInProgress")):
+    sleep(0.5)
+  end
+
+  hwr.write(struct(AutoDoorOpen = True, PermitDoorUnlocking = False))
+  while (not hrd.read("AutoDoorOpenCompleted")):
+    __dmgmori_fail_check()
+    sleep(0.5)
+  end
+  hwr.write(struct(AutoDoorOpen = False, ArmInsideMachine = False))
+end
+
+###
+# Close door, and wait until door fully closes
+###
+def dmgmori_robot_door_close():
+  __dmgmori_fail_check()
+  hwr.write(struct(AutoDoorClose = True))
+  while (not hrd.read("AutoDoorCloseCompleted")):
+    __dmgmori_fail_check()
+    sleep(0.5)
+  end
+  hwr.write(struct(AutoDoorClose = False, PermitDoorUnlocking = True))
+end
+  
+###
+# Close selected fixture and wait until closing is completed
+# @param fixture int
+#   0: Main spindle
+#   1: Secondary spindle
+#   2: Steady rest
+###
+def dmgmori_fixture_clamp(fixture):
+  __dmgmori_wait_error_clear()
+
+  local clamp = struct(Chuck1Clamp = False, Chuck2Clamp = False, SteadyRestClose = False)
+  clamp[fixture] = True
+  hwr.write(clamp)
+  while (not hrd.read(["Chuck1ClampCompleted", "Chuck2ClampCompleted", "SteadyRestCloseComplete"])[fixture]):
+    __dmgmori_fail_check()
+    sleep(0.5)
+  end
+  clamp[fixture] = False
+  hwr.write(clamp)
+end
+
+###
+# Open selected fixture and wait until opening is completed
+# @param fixture int
+#   0: Main spindle
+#   1: Secondary spindle
+#   2: Steady rest
+###
+def dmgmori_fixture_unclamp(fixture):
+  __dmgmori_fail_check()
+
+  local clamp = struct(Chuck1Unclamp = False, Chuck2Unclamp = False, SteadyRestOpen = False)
+  clamp[fixture] = True
+  hwr.write(clamp)
+  while (not hrd.read(["Chuck1UnclampCompleted", "Chuck2UnclampCompleted", "SteadyRestOpenComplete"])[fixture]):
+    __dmgmori_fail_check()
+    sleep(0.5)
+  end
+  clamp[fixture] = False
+  hwr.write(clamp)
+end
+
+###
+# Block until robot request 1 or 2 is active
+# After robot reqest is done, call dmgmori_confirm_robot_request
+# @returns int Robot request number 1, or 2
+###
+def dmgmori_wait_for_robot_request():
+  __dmgmori_fail_check(False)
+
+  local robotRequest = hrd.read(["RobotRequest1", "RobotRequest2"])
+  while(not robotRequest.RobotRequest1 and not robotRequest.RobotRequest2):
+    sleep(0.5)
+    __dmgmori_fail_check(False)
+    robotRequest = hrd.read(["RobotRequest1", "RobotRequest2"])
+  end
+
+  # note: AmInsideMachine inverted
+  hwr.write(struct(ArmInsideMachine = False))
+
+  # execute one of user supplied robot request functions
+  if(robotRequest.RobotRequest1):
+    return 1
+  elif(robotRequest.RobotRequest2):
+    return 2
+  end
+  halt
+end
+
+###
+# Acknowledge to CNC that robot request was completed
+# Note: make sure that arm is not inside CNC before acknowledging request
+###
+def dmgmori_confirm_robot_request():
+  __dmgmori_fail_check()
+  hwr.write(struct(ArmInsideMachine = True))
+  sleep(0.5)
+
+  hwr.write(struct(RobotRequestComplete = True))
+  local robotRequest = hrd.read(["RobotRequest1", "RobotRequest2"])
+  while(robotRequest.RobotRequest1 or robotRequest.RobotRequest2):
+    sleep(0.5)
+    __dmgmori_fail_check()
+    robotRequest = hrd.read(["RobotRequest1", "RobotRequest2"])
+  end  
+  hwr.write(struct(RobotRequestComplete = False))
+end
+
+###
+# Start or stop main spindle jogging
+# note: not tested. Can't be activated when operator door is open.
+# @param onOff bool onOff
+###
+def dmgmori_jogging(onOff):
+  __dmgmori_fail_check()
+  hwr.write(struct(Spindle1Jog = onOff))
+end
+
+###
+# Orient main or secondary spindle to predefined position. Wait until target orientation is reached.
+# note: not tested. Can't be activated when operator door is open.
+# @param orient_type bool
+#   0: main spindle to position 1
+#   1: main spindle to position 2
+#   2: secondary spindle to position 1
+#   3: secondary spindle to position 2
+###
+def dmgmori_orient_spindle(orient_type):
+  __dmgmori_fail_check()
+
+  local orient = struct(Spindle1Orientation1 = False, Spindle1Orientation2 = False, Spindle2Orientation1 = False, Spindle2Orientation2 = False)
+  orient[orient_type] = True
+  hwr.write(orient)
+  while (not hrd.read(["Spindle1Orientation1Complete", "Spindle1Orientation2Complete", "Spindle2Orientation1Complete", "Spindle2Orientation2Complete"])[orient_type]):
+    __dmgmori_fail_check(False)
+    sleep(0.5)
+  end
+  orient[orient_type] = False
+  hwr.write(orient)
+end
+
+###
+# Print CNC output bytes to polyscope log
+###
+def dmgmori_print_inputs():
+  global read_data = hrd.read("cnc_to_robot")
+end
+
+###
+# Debug thread printing current state of input registers every 10 seconds to polyscope log.
+###
+thread dmgmori_debug_thread():
+  while(True):
+    if(dmgmori_eip_configured):
+      dmgmori_print_inputs()
+      sleep(10)
+    end
+    sync()
+  end
+end
+
+run dmgmori_debug_thread()
