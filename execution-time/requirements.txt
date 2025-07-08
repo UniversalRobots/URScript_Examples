@@ -1,0 +1,1 @@
+https://github.com/UniversalRobots/RTDE_Python_Client_Library/releases/download/v2.7.12/rtde-2.7.12-release.zip

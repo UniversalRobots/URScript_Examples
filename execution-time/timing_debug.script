@@ -1,0 +1,185 @@
+def timing_debug():
+  global _hidden_verificationVariable=0
+  modbus_add_signal("0.0.0.0", 255, 0, 0, "MODBUS_1", False)
+  modbus_set_signal_update_frequency("MODBUS_1", 10)
+  set_tool_communication(False, 115200, 0, 1, 1.5, 3.5)
+  set_tool_output_mode(0)
+  set_tool_digital_output_mode(0, 1)
+  set_tool_digital_output_mode(1, 1)
+  set_tool_voltage(0)
+  set_safety_mode_transition_hardness(1)
+  tool_wrench_limit_disable()
+  set_target_payload(0.000000, [0.000000, 0.000000, 0.000000], [0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000])
+  set_standard_analog_input_domain(0, 1)
+  set_standard_analog_input_domain(1, 1)
+  set_tool_analog_input_domain(0, 1)
+  set_tool_analog_input_domain(1, 1)
+  set_analog_outputdomain(0, 0)
+  set_analog_outputdomain(1, 0)
+  set_input_actions_to_default()
+  set_runstate_standard_digital_outputs([0])
+  set_runstate_standard_digital_output_to_value(0, 1)
+  set_tcp(p[0.0,0.0,0.0,0.0,0.0,0.0])
+  set_gravity([0.0, 0.0, 9.82])
+  motion_version_set(2)
+  # begin: URCap Installation Node
+  #   Source: UR Connect, 2.1.7, Universal Robots
+  #   Type: UR Connect
+  myurRPC = rpc_factory("xmlrpc","http://127.0.0.1:40474")
+  # end: URCap Installation Node
+  # begin: URCap Installation Node
+  #   Source: Ethernet/IP I/O Monitor URCap, 1.2.0, 
+  #   Type: Ethernet/IP I/O Monitor
+  conn = rpc_factory("xmlrpc", "http://127.0.0.1:" + to_str(61101) + "/RPC2")
+  
+  def show_monitor():
+    return conn.eip_monitor.show()
+  end
+  # end: URCap Installation Node
+  step_count_d562a2c7_dc51_4c08_8e2d_4ccadd6159d2 = 0.0
+  thread Step_Counter_Thread_8b56a685_f397_41ff_8164_73d07ac38c94():
+    while (True):
+      step_count_d562a2c7_dc51_4c08_8e2d_4ccadd6159d2 = step_count_d562a2c7_dc51_4c08_8e2d_4ccadd6159d2 + 1.0
+      sync()
+    end
+  end
+  run Step_Counter_Thread_8b56a685_f397_41ff_8164_73d07ac38c94()
+  global Waypoint_1_p=p[-.120000000000, -.430000000000, .140000000000, .000000000000, 3.110000000000, .040000000000]
+  global Waypoint_1_q=[0.9892310279703125, -1.296460068061041, 2.2867423437378296, -2.521884721667198, -1.5557272368626922, -0.5743656761333984]
+  global Waypoint_2_p=p[-.119999999955, -.429999999932, .203392313557, .000000000002, 3.109999999999, .039999999999]
+  global Waypoint_2_q=[0.9894024051141934, -1.446808357413257, 2.231179687468959, -2.3159682978010947, -1.5544916765992953, -0.5750561449615539]
+  $ 2 "BeforeStart"
+  $ 3 "var_4≔4"
+  global var_4=4
+  $ 4 "var_3≔8"
+  global var_3=8
+  $ 5 "var_1≔3"
+  global var_1=3
+  $ 6 "Set idbg24=0"
+  write_output_integer_register(24, 0)
+  $ 7 "Set idbg25=0"
+  write_output_integer_register(25, 0)
+  $ 8 "Set idbg26=0"
+  write_output_integer_register(26, 0)
+  $ 9 "Set idbg27=0"
+  write_output_integer_register(27, 0)
+  $ 10 "Set idbg28=0"
+  write_output_integer_register(28, 0)
+  $ 18 "Thread_2"
+  thread Thread_2():
+    while (True):
+      $ 19 "Set idbg24=0"
+      write_output_integer_register(24, 0)
+      $ 20 "Set fdbg24=0"
+      write_output_float_register(24, 0)
+      $ 21 "var_3≔(var_3+1)%40"
+      global var_3=(var_3+1)%40
+      $ 22 "If var_3≟0"
+      if (var_3 == 0):
+        $ 23 "Set idbg24=idbg24+1"
+        write_output_integer_register(24, read_output_integer_register(24)+1)
+        $ 24 "tm2_s≔time(2)"
+        global tm2_s=time(2)
+        $ 25 "'Cheap ik of the same pose'"
+        # 'Cheap ik of the same pose'
+        $ 26 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+        $ 27 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+        $ 28 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+        $ 29 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+        $ 30 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+        $ 31 "tm2_e≔time(2)"
+        global tm2_e=time(2)
+        $ 32 "Set fdbg24=(tm2_e.sec - tm2_s.sec) * 1e6 + (tm2_e.nanosec - tm2_s.nanosec) / 1e3"
+        write_output_float_register(24, (tm2_e.sec - tm2_s.sec) * 1e6 + (tm2_e.nanosec - tm2_s.nanosec) / 1e3)
+      end
+      $ 33 "sync()"
+      sync()
+    end
+  end
+  threadId_Thread_2 = run Thread_2()
+  $ 34 "Thread_4"
+  thread Thread_4():
+    while (True):
+      $ 35 "Set idbg25=0"
+      write_output_integer_register(25, 0)
+      $ 36 "Set fdbg25=0"
+      write_output_float_register(25, 0)
+      $ 37 "var_4≔(var_4+1)%15"
+      global var_4=(var_4+1)%15
+      $ 38 "If var_4≟0"
+      if (var_4 == 0):
+        $ 39 "Set idbg25=idbg25+1"
+        write_output_integer_register(25, read_output_integer_register(25)+1)
+        $ 40 "tm1_s≔time(2)"
+        global tm1_s=time(2)
+        $ 41 "'Expensive ik of different poses'"
+        # 'Expensive ik of different poses'
+        $ 42 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+        $ 43 "var_2≔get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.01, 0, 0, 0, 0, 0]), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.01, 0, 0, 0, 0, 0]), get_actual_joint_positions())
+        $ 44 "var_2≔get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.02, 0, 0, 0, 0, 0]), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.02, 0, 0, 0, 0, 0]), get_actual_joint_positions())
+        $ 45 "var_2≔get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.03, 0, 0, 0, 0, 0]), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.03, 0, 0, 0, 0, 0]), get_actual_joint_positions())
+        $ 46 "var_2≔get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.04, 0, 0, 0, 0, 0]), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(pose_trans(get_target_tcp_pose(), p[0.04, 0, 0, 0, 0, 0]), get_actual_joint_positions())
+        $ 47 "tm1_e≔time(2)"
+        global tm1_e=time(2)
+        $ 48 "Set fdbg25=(tm1_e.sec - tm1_s.sec) * 1e6 + (tm1_e.nanosec - tm1_s.nanosec) / 1e3"
+        write_output_float_register(25, (tm1_e.sec - tm1_s.sec) * 1e6 + (tm1_e.nanosec - tm1_s.nanosec) / 1e3)
+      end
+      $ 49 "sync()"
+      sync()
+    end
+  end
+  threadId_Thread_4 = run Thread_4()
+  $ 50 "Thread_1"
+  thread Thread_1():
+    while (True):
+      $ 51 "Set idbg26=0"
+      write_output_integer_register(26, 0)
+      $ 52 "var_1≔(var_1+1)%20"
+      global var_1=(var_1+1)%20
+      $ 53 "If var_1≟0"
+      if (var_1 == 0):
+        $ 54 "Set idbg26=idbg26+1"
+        write_output_integer_register(26, read_output_integer_register(26)+1)
+        $ 55 "var_2≔get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())"
+        global var_2=get_inverse_kin(get_target_tcp_pose(), get_actual_joint_positions())
+      end
+      $ 56 "sync()"
+      sync()
+    end
+  end
+  threadId_Thread_1 = run Thread_1()
+  $ 57 "Thread_3"
+  thread Thread_3():
+    while (True):
+      $ 58 "Set idbg27=idbg27+1"
+      write_output_integer_register(27, read_output_integer_register(27)+1)
+      $ 59 "sync()"
+      sync()
+    end
+  end
+  threadId_Thread_3 = run Thread_3()
+  while (True):
+    $ 11 "Robot Program"
+    $ 12 "Set idbg28=0"
+    write_output_integer_register(28, 0)
+    $ 13 "MoveJ"
+    $ 14 "Set idbg28=idbg28+1"
+    write_output_integer_register(28, read_output_integer_register(28)+1)
+    $ 15 "Waypoint_1" "breakAfter"
+    movej(get_inverse_kin(Waypoint_1_p, qnear=Waypoint_1_q), a=1.3962634015954636, v=1.0471975511965976)
+    $ 16 "Set idbg28=idbg28+1"
+    write_output_integer_register(28, read_output_integer_register(28)+1)
+    $ 17 "Waypoint_2" "breakAfter"
+    movej(get_inverse_kin(Waypoint_2_p, qnear=Waypoint_2_q), a=1.3962634015954636, v=1.0471975511965976)
+  end
+end

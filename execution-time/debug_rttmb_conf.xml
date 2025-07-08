@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<rtde_config>
+	<recipe key="out">
+		<field name="timestamp" type="DOUBLE"/>
+		<field name="actual_execution_time" type="DOUBLE"/>
+		<field name="robot_mode" type="INT32"/>
+		<field name="safety_status" type="INT32"/>
+		<field name="runtime_state" type="UINT32"/>
+		<field name="script_control_line" type="UINT32"/>
+		<field name="output_double_register_24" type="DOUBLE"/>
+		<field name="output_double_register_25" type="DOUBLE"/>
+		<field name="output_double_register_26" type="DOUBLE"/>
+		<field name="output_double_register_27" type="DOUBLE"/>
+		<field name="output_double_register_28" type="DOUBLE"/>
+		<field name="output_int_register_24" type="INT32"/>
+		<field name="output_int_register_25" type="INT32"/>
+		<field name="output_int_register_26" type="INT32"/>
+		<field name="output_int_register_27" type="INT32"/>
+		<field name="output_int_register_28" type="INT32"/>
+	</recipe>
+</rtde_config>
