@@ -126,7 +126,7 @@ while True:
 
     # 6. Clamp torque to safe limits and send command
     torque_target = clampArray(torque_target, max_torque)
-    torque_command(torque_target, friction_comp = True)
+    direct_torque(torque_target, friction_comp = True)
 
     # 7. Advance trajectory time based on current speed scale
     time = time + speed_scale * get_steptime()
