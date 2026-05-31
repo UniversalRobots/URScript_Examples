@@ -1,5 +1,5 @@
 # Joint-Space PD Torque Controller with Dynamics Compensation
-# Works with Polyscope 5.22 beta which can be downloaded from: https://ur.centercode.com/key/PolyScope5Beta
+# Works with Polyscope 5.25.1 and PolyscopeX 10.12.1 and later.
 
 # --- Parameters and Gains ---
 
@@ -126,7 +126,7 @@ while True:
 
     # 6. Clamp torque to safe limits and send command
     torque_target = clampArray(torque_target, max_torque)
-    direct_torque(torque_target, friction_comp = True)
+    direct_torque(torque_target, viscous_scale=[0.9, 0.9, 0.8, 0.9, 0.9, 0.9], coulomb_scale=[0.8, 0.8, 0.7, 0.8, 0.8, 0.8])
 
     # 7. Advance trajectory time based on current speed scale
     time = time + speed_scale * get_steptime()
